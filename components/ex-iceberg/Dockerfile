@@ -1,5 +1,6 @@
 FROM python:3.13-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ENV PYTHONPATH="/code:${PYTHONPATH}"
 
 WORKDIR /code/
 COPY components/common/pyproject.toml .
@@ -11,6 +12,5 @@ RUN uv sync --all-groups --frozen
 
 COPY components/ex-iceberg/src/ src
 COPY components/ex-iceberg/tests/ tests
-#COPY components/common/flake8.cfg .
 
 CMD ["python", "-u", "/code/src/component.py"]
