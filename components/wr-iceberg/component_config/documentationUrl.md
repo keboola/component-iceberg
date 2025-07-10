@@ -1,0 +1,1 @@
+https://github.com/keboola/component-iceberg.git/blob/master/README.md

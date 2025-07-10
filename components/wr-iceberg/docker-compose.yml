@@ -1,0 +1,27 @@
+services:
+  # for development purposes
+  dev:
+    build:
+      context: ../..
+      dockerfile: components/ex-iceberg/Dockerfile
+    volumes:
+        - ./:/code
+        - ./data:/data
+        - ../common:/code/common
+
+    environment:
+      - KBC_DATADIR=./data
+  test:
+    # Use to run flake8 and unittests checks
+    build:
+      context: ../..
+      dockerfile: components/ex-iceberg/Dockerfile
+    volumes:
+      - ./:/code
+      - ./data:/data
+      - ../common:/code/common
+    environment:
+      - KBC_DATADIR=./data
+    command:
+      - /bin/sh
+      - common/scripts/build_n_test.sh
