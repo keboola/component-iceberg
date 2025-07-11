@@ -1,19 +1,51 @@
 {
   "type": "object",
-  "title": "extractor configuration",
+  "title": "Component configuration",
   "required": [
-    "print_hello"
+    "catalog"
   ],
   "properties": {
-    "print_hello": {
-      "type": "boolean",
-      "title": "Print Hello",
-      "propertyOrder": 1
+    "catalog": {
+      "type": "object",
+      "title": "Catalog",
+      "required": [
+        "name",
+        "warehouse",
+        "uri",
+        "#token"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Catalog Name",
+          "propertyOrder": 11
+        },
+        "warehouse": {
+          "type": "string",
+          "title": "Warehouse",
+          "propertyOrder": 12
+        },
+        "uri": {
+          "type": "string",
+          "title": "URI",
+          "propertyOrder": 13
+        },
+        "#token": {
+          "type": "string",
+          "format": "password",
+          "title": "Token",
+          "propertyOrder": 14
+        }
+      },
+      "propertyOrder": 2
     },
     "debug": {
       "type": "boolean",
-      "title": "Debug",
-      "propertyOrder": 2
+      "title": "Debug mode",
+      "format": "checkbox",
+      "default": false,
+      "description": "If enabled, the component will produce detailed logs",
+      "propertyOrder": 5
     }
   }
 }

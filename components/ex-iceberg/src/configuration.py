@@ -7,6 +7,7 @@ from common.configuration import CommonConfiguration
 class DataSelectionMode(str, Enum):
     all_data = "all_data"
     select_columns = "select_columns"
+    custom_query = "custom_query"
 
 
 class LoadType(str, Enum):
@@ -15,8 +16,9 @@ class LoadType(str, Enum):
 
 
 class Source(BaseModel):
-    name: str = Field()
     namespace: str = Field()
+    table_name: str = Field()
+    snapshot_id: str = Field(default=None)
 
 
 class DataSelection(BaseModel):
