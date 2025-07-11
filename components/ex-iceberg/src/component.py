@@ -47,7 +47,7 @@ class Component(ComponentBase):
             self.duckdb.execute(q)
             self.write_manifest(out_file)
         else:
-            table_meta = self.duckdb.execute(f"DESCRIBE out_table;").fetchall()
+            table_meta = self.duckdb.execute("DESCRIBE out_table;").fetchall()
             schema = OrderedDict(
                 {
                     c[0]: ColumnDefinition(
