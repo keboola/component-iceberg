@@ -34,12 +34,6 @@ class Component(ComponentBase):
 
         self.duckdb.execute(f""" CREATE TABLE out_table AS {self.get_query()} """)
 
-        logging.info(
-            self.duckdb.sql("""
-                    SELECT path, round(size/10**6)::INT as 'size_MB' FROM duckdb_temporary_files();
-                                                     """).show()
-        )
-
         if self.params.destination.parquet_output:
             out_file = self.create_out_file_definition(f"{self.params.destination.file_name}.parquet")
             q = f" COPY out_table TO '{out_file.full_path}'; "
@@ -124,7 +118,7 @@ class Component(ComponentBase):
             SELECT {", ".join(self.params.data_selection.columns)}
             FROM catalog."{self.params.source.namespace}"."{self.params.source.table_name}" """
         elif self.params.data_selection.mode == "all_data":
-            query = f'SELECT * FROM catalog."{self.params.source.namespace}"."{self.params.source.table_name}")'
+            query = f'SELECT * FROM catalog."{self.params.source.namespace}"."{self.params.source.table_name}"'
         else:
             raise UserException("Invalid data selection mode")
 
