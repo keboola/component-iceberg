@@ -98,8 +98,6 @@ class Component(ComponentBase):
         conn = duckdb.connect(database=":memory:", config=config)
 
         conn.execute(f"""
-            -- INSTALL iceberg;
-            -- LOAD iceberg;
 
             CREATE SECRET r2_secret (
             TYPE ICEBERG,
@@ -195,7 +193,7 @@ class Component(ComponentBase):
     def table_preview(self):
         out = self.duckdb.execute(f"""
                 SELECT *
-                FROM catalog."{self.params.source.namespace}"."{self.params.source.table_name}")
+                FROM catalog."{self.params.source.namespace}"."{self.params.source.table_name}"
                 LIMIT 10;
                 """).pl()
 
