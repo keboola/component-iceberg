@@ -16,8 +16,8 @@ class LoadType(str, Enum):
 
 
 class Source(BaseModel):
-    namespace: str = Field()
-    table_name: str = Field()
+    namespace: str = Field(default=None)
+    table_name: str = Field(default=None)
     snapshot_id: str = Field(default=None)
 
 
@@ -42,6 +42,6 @@ class Destination(BaseModel):
 
 
 class Configuration(CommonConfiguration):
-    source: Source
-    data_selection: DataSelection
-    destination: Destination
+    source: Source = Field(default_factory=Source)
+    data_selection: DataSelection = Field(default_factory=DataSelection)
+    destination: Destination = Field(default_factory=Destination)
