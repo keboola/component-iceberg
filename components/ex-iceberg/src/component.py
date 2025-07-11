@@ -34,8 +34,10 @@ class Component(ComponentBase):
 
         self.duckdb.execute(f""" CREATE TABLE out_table AS {self.get_query()} """)
 
+        table_name = self.params.destination.table_name or self.params.source.table_name
+
         if self.params.destination.parquet_output:
-            out_file = self.create_out_file_definition(f"{self.params.destination.file_name}.parquet")
+            out_file = self.create_out_file_definition(f"{table_name}.parquet")
             q = f" COPY out_table TO '{out_file.full_path}'; "
             logging.debug(f"Running query: {q}; ")
             self.duckdb.execute(q)
@@ -51,8 +53,6 @@ class Component(ComponentBase):
                     for c in table_meta
                 }  # c[0] is the column name, c[1] is the data type, c[3] is the primary key
             )
-
-            table_name = self.params.destination.table_name or self.params.source.table_name
 
             out_table = self.create_out_table_definition(
                 f"{table_name}.csv",
