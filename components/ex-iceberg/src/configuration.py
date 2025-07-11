@@ -1,13 +1,26 @@
 from enum import Enum
-
 from pydantic import BaseModel, Field, computed_field
 
-from common.configuration import CommonConfiguration
+# from common.configuration import CommonConfiguration
+
+
+class CommonCatalogConfiguration(BaseModel):
+    name: str
+    warehouse: str
+    uri: str
+    token: str = Field(alias="#token")
+
+
+class CommonConfiguration(BaseModel):
+    catalog: CommonCatalogConfiguration
+    duckdb_max_memory_mb: int = 128
+    debug: bool = False
 
 
 class DataSelectionMode(str, Enum):
     all_data = "all_data"
     select_columns = "select_columns"
+    custom_query = "custom_query"
 
 
 class LoadType(str, Enum):
@@ -16,8 +29,9 @@ class LoadType(str, Enum):
 
 
 class Source(BaseModel):
-    name: str = Field()
-    namespace: str = Field()
+    namespace: str = Field(default=None)
+    table_name: str = Field(default=None)
+    snapshot_id: str = Field(default=None)
 
 
 class DataSelection(BaseModel):
@@ -41,6 +55,6 @@ class Destination(BaseModel):
 
 
 class Configuration(CommonConfiguration):
-    source: Source
-    data_selection: DataSelection
-    destination: Destination
+    source: Source = Field(default_factory=Source)
+    data_selection: DataSelection = Field(default_factory=DataSelection)
+    destination: Destination = Field(default_factory=Destination)

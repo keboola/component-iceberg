@@ -8,79 +8,112 @@ import os
 from collections import OrderedDict
 from datetime import datetime
 
+import tracemalloc
 import duckdb
+from pyiceberg.catalog.rest import RestCatalog
+
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.dao import BaseType, ColumnDefinition, SupportedDataTypes
 from keboola.component.exceptions import UserException
 from keboola.component.sync_actions import SelectElement
-from pyiceberg.catalog.rest import RestCatalog
 
 from configuration import Configuration
+
 
 DUCK_DB_DIR = os.path.join(os.environ.get("TMPDIR", "/tmp"), "duckdb")
 
 
 class Component(ComponentBase):
-    """
-    Extends base class for general Python components. Initializes the CommonInterface
-    and performs configuration validation.
-
-    For easier debugging the data folder is picked up by default from `../data` path,
-    relative to working directory.
-
-    If `debug` parameter is present in the `config.json`, the default logger is set to verbose DEBUG mode.
-    """
-
     def __init__(self):
         super().__init__()
         self.params = Configuration(**self.configuration.parameters)
         self.duckdb = self._init_duckdb_connection()
         self.catalog = self._init_catalog()
+        self.tracemalloc = tracemalloc.start()
 
     def run(self):
-        """
-        Main execution code
-        """
-
         start_time = datetime.now()
 
-        # table = self.catalog.load_table((self.params.table.namespace, self.params.table.name))
-        #
-        # table.scan(
-        #     # snapshot_id=new,
-        #     # row_filter=GreaterThanOrEqual("id", 2) | GreaterThanOrEqual("score", 90.0),
-        #     # selected_fields=("name", "score", "new_col"),
-        # ).to_duckdb(table_name="out_table", connection=self.duckdb)
-        #
-        # self.duckdb.execute("CREATE TABLE persist AS SELECT * FROM out_table")
-        # self.duckdb.close()
-        # exit(0)
+        table = self.catalog.load_table((self.params.source.namespace, self.params.source.table_name))
 
-        # self.duckdb.execute("CREATE TABLE out_table AS SELECT * FROM persist")
+        # Funkční workaround
+        batches = table.scan(
+            # limit=100_000,
+            # snapshot_id=new,
+            # row_filter=GreaterThanOrEqual("id", 2) | GreaterThanOrEqual("score", 90.0),
+            # selected_fields=("name", "score", "new_col"),
+        ).to_arrow_batch_reader()
+
+        first = next(batches)
+        self.duckdb.execute("CREATE TABLE out_table AS SELECT * FROM first")
+        logging.info(f"Created initial table with {first.num_rows} rows")
+
+        for batch in batches:
+            self.duckdb.execute("INSERT INTO out_table SELECT * FROM batch")
+            logging.info(f"Inserted {batch.num_rows} rows")
+
+            logging.info(
+                self.duckdb.execute("""
+                    SELECT path, round(size/10**6)::INT as 'size_MB' FROM duckdb_temporary_files();
+                                                     """).fetchall()
+            )
+
+            logging.info(
+                self.duckdb.execute("""
+        SELECT tag, round(memory_usage_bytes/10**6)::INT as 'mem_MB',
+            round(temporary_storage_bytes/10**6)::INT as 'storage_MB'
+        FROM duckdb_memory();
+                                                     """).fetchall()
+            )
+
+            import psutil
+
+            # Create a list to store process info
+            process_list = []
+
+            # Iterate over all running processes
+            for proc in psutil.process_iter(["pid", "name", "memory_info"]):
+                try:
+                    # Append process details to the list
+                    process_list.append(
+                        {
+                            "PID": proc.info["pid"],
+                            "Name": proc.info["name"],
+                            "Memory Usage (RSS)": proc.info["memory_info"].rss / (1024**2),
+                        }
+                    )
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    # Handle any errors due to process termination or access denial
+                    continue
+
+            logging.info(f"Current memory usage of processes: {process_list}")
+
+            snapshot = tracemalloc.take_snapshot()
+            top_stats = snapshot.statistics("lineno")
+            out = ""
+            for stat in top_stats[:10]:
+                out += f"{stat}\n"
+            logging.info(f"1st stage: \n {out}")
 
         if self.params.destination.parquet_output:
-            out_file = self.create_out_file_definition(
-                f"{self.params.destination.file_name}.parquet"
-            )
+            out_file = self.create_out_file_definition(f"{self.params.destination.file_name}.parquet")
             q = f" COPY out_table TO '{out_file.full_path}'; "
             logging.debug(f"Running query: {q}; ")
             self.duckdb.execute(q)
             self.write_manifest(out_file)
         else:
-            table_meta = self.duckdb.execute(f"DESCRIBE out_table;").fetchall()
+            table_meta = self.duckdb.execute("DESCRIBE out_table;").fetchall()
             schema = OrderedDict(
                 {
                     c[0]: ColumnDefinition(
                         data_types=BaseType(dtype=self.convert_base_types(c[1])),
-                        primary_key=c[3] == "PRI"
-                        if not self.params.destination.primary_key
-                        else False,
+                        primary_key=c[3] == "PRI" if not self.params.destination.primary_key else False,
                     )
                     for c in table_meta
                 }  # c[0] is the column name, c[1] is the data type, c[3] is the primary key
             )
 
-            table_name = self.params.destination.table_name or self.params.source.name
+            table_name = self.params.destination.table_name or self.params.source.table_name
 
             out_table = self.create_out_table_definition(
                 f"{table_name}.csv",
@@ -98,9 +131,7 @@ class Component(ComponentBase):
             except duckdb.ConversionException as e:
                 raise UserException(f"Error during query execution: {e}")
 
-        logging.debug(
-            f"Execution time: {(datetime.now() - start_time).seconds:.2f} seconds"
-        )
+        logging.debug(f"Execution time: {(datetime.now() - start_time).seconds:.2f} seconds")
 
     def _init_catalog(self):
         catalog = RestCatalog(
@@ -118,7 +149,11 @@ class Component(ComponentBase):
             "temp_directory": DUCK_DB_DIR,
             "max_memory": f"{self.params.duckdb_max_memory_mb}MB",
         }
-        conn = duckdb.connect("data/out/duck.db", config=config)
+        logging.info(f"Connecting to DuckDB with config: {config}")
+        # conn = duckdb.connect("data/out/duck.db", config=config)
+        conn = duckdb.connect(database=f"{DUCK_DB_DIR}/tmp.db", config=config)
+        # conn = duckdb.connect(database=":memory:", config=config)
+
         if not self.params.destination.preserve_insertion_order:
             conn.execute("SET preserve_insertion_order = false;")
         return conn
@@ -163,9 +198,7 @@ class Component(ComponentBase):
 
     @sync_action("list_snapshots")
     def list_snapshots(self):
-        snapshots = self.catalog.load_table(
-            (self.params.source.namespace, self.params.source.name)
-        ).snapshots()
+        snapshots = self.catalog.load_table((self.params.source.namespace, self.params.source.table_name)).snapshots()
         return [
             SelectElement(
                 label=str(datetime.fromtimestamp(s.timestamp_ms / 1000)),
@@ -176,13 +209,8 @@ class Component(ComponentBase):
 
     @sync_action("list_columns")
     def list_columns(self):
-        schema = self.catalog.load_table(
-            (self.params.source.namespace, self.params.source.name)
-        ).schema()
-        return [
-            SelectElement(label=f"{field.name} ({field.field_type})", value=field.name)
-            for field in schema.fields
-        ]
+        schema = self.catalog.load_table((self.params.source.namespace, self.params.source.table_name)).schema()
+        return [SelectElement(label=f"{field.name} ({field.field_type})", value=field.name) for field in schema.fields]
 
 
 """
