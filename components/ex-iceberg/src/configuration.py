@@ -1,7 +1,20 @@
 from enum import Enum
 from pydantic import BaseModel, Field, computed_field
 
-from common.configuration import CommonConfiguration
+# from common.configuration import CommonConfiguration
+
+
+class CommonCatalogConfiguration(BaseModel):
+    name: str
+    warehouse: str
+    uri: str
+    token: str = Field(alias="#token")
+
+
+class CommonConfiguration(BaseModel):
+    catalog: CommonCatalogConfiguration
+    duckdb_max_memory_mb: int = 128
+    debug: bool = False
 
 
 class DataSelectionMode(str, Enum):
