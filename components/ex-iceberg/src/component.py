@@ -199,7 +199,8 @@ class Component(ComponentBase):
     @sync_action("query_preview")
     def query_preview(self):
         query = (
-            self.params.data_selection.query % f'catalog."{self.params.source.namespace}"."{self.params.source.table_name}"'
+            self.params.data_selection.query
+            % f'catalog."{self.params.source.namespace}"."{self.params.source.table_name}"'
         )
 
         if "limit" not in query.lower():
