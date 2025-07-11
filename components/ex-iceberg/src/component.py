@@ -98,8 +98,8 @@ class Component(ComponentBase):
         conn = duckdb.connect(database=":memory:", config=config)
 
         conn.execute(f"""
-            INSTALL iceberg;
-            LOAD iceberg;
+            -- INSTALL iceberg;
+            -- LOAD iceberg;
 
             CREATE SECRET r2_secret (
             TYPE ICEBERG,
