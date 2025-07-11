@@ -92,6 +92,7 @@ class Component(ComponentBase):
         os.makedirs(DUCK_DB_DIR, exist_ok=True)
         config = {
             "temp_directory": DUCK_DB_DIR,
+            "extension_directory": os.path.join(DUCK_DB_DIR, "extensions"),
             "max_memory": f"{self.params.duckdb_max_memory_mb}MB",
         }
         logging.info(f"Connecting to DuckDB with config: {config}")
