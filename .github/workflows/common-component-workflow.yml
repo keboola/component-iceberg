@@ -149,7 +149,7 @@ jobs:
           app_id: ${{ inputs.kbc_developerportal_app }}
           username: ${{ secrets.KBC_DEVELOPERPORTAL_USERNAME }}
           password: ${{ secrets.KBC_DEVELOPERPORTAL_PASSWORD }}
-          tag: ${{ needs.check_version.outputs.image_tag }}3
+          tag: ${{ needs.check_version.outputs.image_tag }}4
           push_latest: ${{ needs.check_version.outputs.should_deploy }}
           source_image: ${{ inputs.kbc_developerportal_app }}
 
