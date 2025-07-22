@@ -31,7 +31,7 @@ class LoadType(str, Enum):
 class Source(BaseModel):
     namespace: str = Field(default=None)
     table_name: str = Field(default=None)
-    snapshot_id: str = Field(default=None)
+    snapshot_id: int = Field(default=None)
 
 
 class DataSelection(BaseModel):

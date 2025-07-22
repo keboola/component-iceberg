@@ -1,14 +1,8 @@
-"""
-Template Component main class.
-
-"""
-
 import logging
 import os
 from collections import OrderedDict
 from datetime import datetime
 
-import tracemalloc
 import duckdb
 from pyiceberg.catalog.rest import RestCatalog
 
@@ -29,19 +23,20 @@ class Component(ComponentBase):
         self.params = Configuration(**self.configuration.parameters)
         self.duckdb = self._init_duckdb_connection()
         self.catalog = self._init_catalog()
-        self.tracemalloc = tracemalloc.start()
 
     def run(self):
         start_time = datetime.now()
 
         table = self.catalog.load_table((self.params.source.namespace, self.params.source.table_name))
 
-        # Funkční workaround
+        selected_fields = (
+            tuple(self.params.data_selection.columns) if self.params.data_selection.mode == "select_columns" else ("*",)
+        )
+
         batches = table.scan(
-            # limit=100_000,
-            # snapshot_id=new,
-            # row_filter=GreaterThanOrEqual("id", 2) | GreaterThanOrEqual("score", 90.0),
-            # selected_fields=("name", "score", "new_col"),
+            limit=100_000,
+            snapshot_id=self.params.source.snapshot_id,
+            selected_fields=selected_fields,
         ).to_arrow_batch_reader()
 
         first = next(batches)
@@ -51,49 +46,6 @@ class Component(ComponentBase):
         for batch in batches:
             self.duckdb.execute("INSERT INTO out_table SELECT * FROM batch")
             logging.info(f"Inserted {batch.num_rows} rows")
-
-            logging.info(
-                self.duckdb.execute("""
-                    SELECT path, round(size/10**6)::INT as 'size_MB' FROM duckdb_temporary_files();
-                                                     """).fetchall()
-            )
-
-            logging.info(
-                self.duckdb.execute("""
-        SELECT tag, round(memory_usage_bytes/10**6)::INT as 'mem_MB',
-            round(temporary_storage_bytes/10**6)::INT as 'storage_MB'
-        FROM duckdb_memory();
-                                                     """).fetchall()
-            )
-
-            import psutil
-
-            # Create a list to store process info
-            process_list = []
-
-            # Iterate over all running processes
-            for proc in psutil.process_iter(["pid", "name", "memory_info"]):
-                try:
-                    # Append process details to the list
-                    process_list.append(
-                        {
-                            "PID": proc.info["pid"],
-                            "Name": proc.info["name"],
-                            "Memory Usage (RSS)": proc.info["memory_info"].rss / (1024**2),
-                        }
-                    )
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    # Handle any errors due to process termination or access denial
-                    continue
-
-            logging.info(f"Current memory usage of processes: {process_list}")
-
-            snapshot = tracemalloc.take_snapshot()
-            top_stats = snapshot.statistics("lineno")
-            out = ""
-            for stat in top_stats[:10]:
-                out += f"{stat}\n"
-            logging.info(f"1st stage: \n {out}")
 
         if self.params.destination.parquet_output:
             out_file = self.create_out_file_definition(f"{self.params.destination.file_name}.parquet")
