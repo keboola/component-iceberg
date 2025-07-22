@@ -1,8 +1,3 @@
-"""
-Template Component main class.
-
-"""
-
 import logging
 import os
 from collections import OrderedDict
