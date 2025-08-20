@@ -9,8 +9,8 @@ ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
 
 RUN uv sync --all-groups --frozen
 
-COPY components/ex-iceberg/src/ src
-COPY components/ex-iceberg/tests/ tests
+COPY components/wr-iceberg/src/ src
+COPY components/wr-iceberg/tests/ tests
 #COPY components/common/flake8.cfg .
 
 CMD ["python", "-u", "/code/src/component.py"]

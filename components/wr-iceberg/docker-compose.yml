@@ -3,7 +3,7 @@ services:
   dev:
     build:
       context: ../..
-      dockerfile: components/ex-iceberg/Dockerfile
+      dockerfile: components/wr-iceberg/Dockerfile
     volumes:
         - ./:/code
         - ./data:/data
@@ -15,7 +15,7 @@ services:
     # Use to run flake8 and unittests checks
     build:
       context: ../..
-      dockerfile: components/ex-iceberg/Dockerfile
+      dockerfile: components/wr-iceberg/Dockerfile
     volumes:
       - ./:/code
       - ./data:/data
