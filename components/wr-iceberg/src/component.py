@@ -45,7 +45,7 @@ class Component(ComponentBase):
         if len(tables) > 1:
             raise UserException("Each configuration row can have only one input table")
 
-        self.load_table(tables[0])
+        self.load_table((tables or files)[0])
 
         logging.debug(f"Execution time: {(datetime.now() - start_time).seconds:.2f} seconds")
 
@@ -76,6 +76,7 @@ class Component(ComponentBase):
                 all_varchar=self.params.destination.all_varchar,
             )
         else:
+            # TODO: Implement support for reading parquet from file storage
             # relation = self.duckdb.read_parquet()
             relation = None
 
