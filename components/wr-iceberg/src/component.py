@@ -40,7 +40,7 @@ class Component(ComponentBase):
         files = self.get_input_files_definitions()
 
         if (tables and files) or (not tables and not files):
-            raise Exception("Each configuration row can be mapped to either a file or a table, but not both.")
+            raise UserException("Each configuration row can be mapped to either a file or a table, but not both.")
 
         if len(tables) > 1:
             raise UserException("Each configuration row can have only one input table")
@@ -107,9 +107,6 @@ class Component(ComponentBase):
                 table.upsert(batch, join_cols=self.params.destination.primary_key or pk)
             else:
                 table.append(batch)
-            # table.commit()
-
-        pass
 
     def _prepare_table(self, namespace: str, table_name: str, schema: pa.Schema) -> IcebergTable:
         exist = self.catalog.table_exists(identifier=(namespace, table_name))
