@@ -96,7 +96,7 @@
           "title": "Preserve insertion order",
           "format": "checkbox",
           "default": true,
-          "description": "If enabled, the extractor will preserve the order of the rows in the destination table, when encountering OOM error, disabling this option may help",
+          "description": "If enabled, the extractor will preserve the order of the rows in the destination table. Disabling this option may help when encountering OOM error.",
           "propertyOrder": 15
         }
       },

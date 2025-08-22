@@ -1,8 +1,8 @@
-import urllib.request
 import json
+import logging
 import time
 import urllib.error
-import logging
+import urllib.request
 
 
 class SAPIClient:

@@ -30,13 +30,13 @@ class Component(ComponentBase):
         table = self.catalog.load_table((self.params.source.namespace, self.params.source.table_name))
 
         selected_fields = (
-            tuple(self.params.data_selection.columns) if self.params.data_selection.mode == "select_columns" else ("*",)
+            self.params.data_selection.columns if self.params.data_selection.mode == "select_columns" else "*"
         )
 
         batches = table.scan(
             limit=100_000,
             snapshot_id=self.params.source.snapshot_id,
-            selected_fields=selected_fields,
+            selected_fields=tuple(selected_fields),
         ).to_arrow_batch_reader()
 
         first = next(batches)
@@ -49,7 +49,7 @@ class Component(ComponentBase):
 
         if self.params.destination.parquet_output:
             out_file = self.create_out_file_definition(f"{self.params.destination.file_name}.parquet")
-            q = f" COPY out_table TO '{out_file.full_path}'; "
+            q = f"COPY out_table TO '{out_file.full_path}'; "
             logging.debug(f"Running query: {q}; ")
             self.duckdb.execute(q)
             self.write_manifest(out_file)

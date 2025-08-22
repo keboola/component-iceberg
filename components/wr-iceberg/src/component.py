@@ -92,7 +92,7 @@ class Component(ComponentBase):
 
         pk = None
         if isinstance(table, TableDefinition):
-            pk = table.primary_key or []
+            pk = table.primary_key
 
         batches = relation.fetch_arrow_reader(batch_size=5_000_000)
 
@@ -128,6 +128,7 @@ class Component(ComponentBase):
         return table
 
     def _init_catalog(self):
+        # TODO: remove when implemented in library https://keboola.atlassian.net/browse/CFT-3539 to remove this
         if self.configuration.action not in ["", "run"]:
             logging.getLogger().setLevel(logging.CRITICAL)
 

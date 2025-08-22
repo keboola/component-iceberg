@@ -1,8 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field
 
-# from common.configuration import CommonConfiguration
-
 
 class CommonCatalogConfiguration(BaseModel):
     name: str
@@ -24,8 +22,8 @@ class Mode(str, Enum):
 
 
 class Destination(BaseModel):
-    namespace: str = Field(default=None)
-    table_name: str = Field(default=None)
+    namespace: str = ""
+    table_name: str = ""
     mode: Mode = Field(default=Mode.replace)
     preserve_insertion_order: bool = True
     all_varchar: bool = False
