@@ -1,87 +1,169 @@
-"""
-Template Component main class.
-
-"""
-import csv
-from datetime import datetime
 import logging
+import os
+from datetime import datetime
 
-from keboola.component.base import ComponentBase
+import duckdb
+from duckdb import DuckDBPyRelation
+from pyiceberg.catalog.rest import RestCatalog, Table as IcebergTable
+import pyarrow as pa
+
+from keboola.component.base import ComponentBase, sync_action
+from keboola.component.dao import (
+    IODefinition,
+    TableDefinition,
+    # ,FileDefinition,
+    # BaseType,
+    # ColumnDefinition,
+    # SupportedDataTypes,
+)
 from keboola.component.exceptions import UserException
+from keboola.component.sync_actions import SelectElement
 
-from configuration import Configuration
+from storage_api_client import SAPIClient
+from configuration import Configuration, Mode
+
+
+DUCK_DB_DIR = os.path.join(os.environ.get("TMPDIR", "/tmp"), "duckdb")
 
 
 class Component(ComponentBase):
-    """
-        Extends base class for general Python components. Initializes the CommonInterface
-        and performs configuration validation.
-
-        For easier debugging the data folder is picked up by default from `../data` path,
-        relative to working directory.
-
-        If `debug` parameter is present in the `config.json`, the default logger is set to verbose DEBUG mode.
-    """
-
     def __init__(self):
         super().__init__()
+        self.params = Configuration(**self.configuration.parameters)
+        self.duckdb = None
+        self.catalog = self._init_catalog()
 
     def run(self):
-        """
-        Main execution code
-        """
+        start_time = datetime.now()
+        self.duckdb = self._init_duckdb_connection()
+        tables = self.get_input_tables_definitions()
+        files = self.get_input_files_definitions()
 
-        # ####### EXAMPLE TO REMOVE
-        # check for missing configuration parameters
-        params = Configuration(**self.configuration.parameters)
+        if (tables and files) or (not tables and not files):
+            raise UserException("Each configuration row can be mapped to either a file or a table, but not both.")
 
-        # Access parameters in configuration
-        if params.print_hello:
-            logging.info("Hello World")
+        if len(tables) > 1:
+            raise UserException("Each configuration row can have only one input table")
 
-        # get input table definitions
-        input_tables = self.get_input_tables_definitions()
-        for table in input_tables:
-            logging.info(f'Received input table: {table.name} with path: {table.full_path}')
+        self.load_table((tables or files)[0])
 
-        if len(input_tables) == 0:
-            raise UserException("No input tables found")
+        logging.debug(f"Execution time: {(datetime.now() - start_time).seconds:.2f} seconds")
 
-        # get last state data/in/state.json from previous run
-        previous_state = self.get_state_file()
-        logging.info(previous_state.get('some_parameter'))
+    def _init_duckdb_connection(self):
+        os.makedirs(DUCK_DB_DIR, exist_ok=True)
+        config = {
+            "temp_directory": DUCK_DB_DIR,
+            "max_memory": f"{self.params.duckdb_max_memory_mb}MB",
+        }
+        logging.debug(f"Connecting to DuckDB with config: {config}")
+        conn = duckdb.connect(database=f"{DUCK_DB_DIR}/tmp.db", config=config)
 
-        # Create output table (Table definition - just metadata)
-        table = self.create_out_table_definition('output.csv', incremental=True, primary_key=['timestamp'])
+        if not self.params.destination.preserve_insertion_order:
+            conn.execute("SET preserve_insertion_order = false;")
+        return conn
 
-        # get file path of the table (data/out/tables/Features.csv)
-        out_table_path = table.full_path
-        logging.info(out_table_path)
+    def _create_table_relation(self, in_table: IODefinition) -> DuckDBPyRelation:
+        if isinstance(in_table, TableDefinition):
+            dtypes = {key: value.data_types.get("base").dtype for key, value in in_table.schema.items()}
 
-        # Add timestamp column and save into out_table_path
-        input_table = input_tables[0]
-        with (open(input_table.full_path, 'r') as inp_file,
-              open(table.full_path, mode='wt', encoding='utf-8', newline='') as out_file):
-            reader = csv.DictReader(inp_file)
+            relation = self.duckdb.read_csv(
+                path_or_buffer=in_table.full_path,
+                delimiter=in_table.delimiter,
+                quotechar=in_table.enclosure,
+                header=in_table.has_header,
+                names=in_table.column_names,
+                dtype=dtypes,
+                all_varchar=self.params.destination.all_varchar,
+            )
+        else:
+            # TODO: Implement support for reading parquet from file storage
+            # relation = self.duckdb.read_parquet()
+            relation = None
 
-            columns = list(reader.fieldnames)
-            # append timestamp
-            columns.append('timestamp')
+        return relation
 
-            # write result with column added
-            writer = csv.DictWriter(out_file, fieldnames=columns)
-            writer.writeheader()
-            for in_row in reader:
-                in_row['timestamp'] = datetime.now().isoformat()
-                writer.writerow(in_row)
+    def load_table(self, table: IODefinition):
+        namespace = self.params.destination.namespace
+        table_name = self.params.destination.table_name
+        relation = self._create_table_relation(table)
 
-        # Save table manifest (output.csv.manifest) from the Table definition
-        self.write_manifest(table)
+        if not self.catalog.namespace_exists(namespace):
+            self.catalog.create_namespace(namespace)
 
-        # Write new state - will be available next run
-        self.write_state_file({"some_state_parameter": "value"})
+        pk = None
+        if isinstance(table, TableDefinition):
+            pk = table.primary_key
 
-        # ####### EXAMPLE TO REMOVE END
+        batches = relation.fetch_arrow_reader(batch_size=5_000_000)
+
+        first = True
+
+        for raw_batch in batches:
+            batch = pa.Table.from_batches([raw_batch])
+
+            if first:
+                table = self._prepare_table(namespace, table_name, batch.schema)
+
+            if self.params.destination.mode == Mode.upsert:
+                table.upsert(batch, join_cols=self.params.destination.primary_key or pk)
+            else:
+                table.append(batch)
+
+    def _prepare_table(self, namespace: str, table_name: str, schema: pa.Schema) -> IcebergTable:
+        exist = self.catalog.table_exists(identifier=(namespace, table_name))
+
+        if self.params.destination.mode == Mode.replace:
+            if exist:
+                self.catalog.drop_table(identifier=(namespace, table_name))
+                exist = False
+
+        if not exist:
+            table = self.catalog.create_table(
+                identifier=(namespace, table_name),
+                schema=schema,
+            )
+        else:
+            table = self.catalog.load_table(identifier=(namespace, table_name))
+
+        return table
+
+    def _init_catalog(self):
+        # TODO: remove when implemented in library https://keboola.atlassian.net/browse/CFT-3539 to remove this
+        if self.configuration.action not in ["", "run"]:
+            logging.getLogger().setLevel(logging.CRITICAL)
+
+        catalog = RestCatalog(
+            name=self.params.catalog.name,
+            warehouse=self.params.catalog.warehouse,
+            uri=self.params.catalog.uri,
+            token=self.params.catalog.token,
+        )
+
+        return catalog
+
+    @sync_action("list_namespaces")
+    def list_namespaces(self):
+        namespaces = self.catalog.list_namespaces()
+        return [SelectElement(n[0]) for n in namespaces]
+
+    @sync_action("list_tables")
+    def list_tables(self):
+        tables = self.catalog.list_tables(self.params.destination.namespace)
+        return [SelectElement(t[1]) for t in tables]
+
+    @sync_action("list_table_columns")
+    def list_table_columns(self):
+        in_tables = self.configuration.tables_input_mapping
+
+        if in_tables:
+            storage_client = SAPIClient(self.environment_variables.url, self.environment_variables.token)
+
+            table_id = self.configuration.tables_input_mapping[0].source
+            columns = storage_client.get_table_detail(table_id)["columns"]
+        else:
+            raise UserException("Can list only columns from input tables, not files.")
+
+        return [SelectElement(col) for col in columns]
 
 
 """

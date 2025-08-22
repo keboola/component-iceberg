@@ -1,6 +1,10 @@
 services:
   # for development purposes
   dev:
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
     build:
       context: ../..
       dockerfile: components/ex-iceberg/Dockerfile

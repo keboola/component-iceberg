@@ -1,19 +1,35 @@
-import logging
-from pydantic import BaseModel, Field, ValidationError
-from keboola.component.exceptions import UserException
+from enum import Enum
+from pydantic import BaseModel, Field
 
 
-class Configuration(BaseModel):
-    print_hello: bool
-    api_token: str = Field(alias="#api_token")
+class CommonCatalogConfiguration(BaseModel):
+    name: str
+    warehouse: str
+    uri: str
+    token: str = Field(alias="#token")
+
+
+class CommonConfiguration(BaseModel):
+    catalog: CommonCatalogConfiguration
+    duckdb_max_memory_mb: int = 128
     debug: bool = False
 
-    def __init__(self, **data):
-        try:
-            super().__init__(**data)
-        except ValidationError as e:
-            error_messages = [f"{err['loc'][0]}: {err['msg']}" for err in e.errors()]
-            raise UserException(f"Validation Error: {', '.join(error_messages)}")
 
-        if self.debug:
-            logging.debug("Component will run in Debug mode")
+class Mode(str, Enum):
+    replace = "replace"
+    append = "append"
+    upsert = "upsert"
+
+
+class Destination(BaseModel):
+    namespace: str = ""
+    table_name: str = ""
+    mode: Mode = Field(default=Mode.replace)
+    preserve_insertion_order: bool = True
+    all_varchar: bool = False
+    primary_key: list[str] = Field(default_factory=list)
+    partition_by: list[str] = Field(default_factory=list)
+
+
+class Configuration(CommonConfiguration):
+    destination: Destination = Field(default_factory=Destination)

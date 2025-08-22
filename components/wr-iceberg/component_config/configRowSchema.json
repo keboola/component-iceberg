@@ -1,1 +1,114 @@
-{}
+{
+  "type": "object",
+  "title": "Component configuration",
+  "required": [
+    "destination",
+    "debug"
+  ],
+  "properties": {
+    "destination": {
+      "type": "object",
+      "title": "Data destination",
+      "required": [
+        "namespace",
+        "table_name"
+      ],
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "enum": [],
+          "default": "",
+          "title": "Namespace",
+          "format": "select",
+          "options": {
+            "tags": true,
+            "creatable": true,
+            "async": {
+              "label": "Load namespaces",
+              "action": "list_namespaces",
+              "autoload": [
+                "parameters.#token"
+              ]
+            }
+          },
+          "propertyOrder": 11
+        },
+        "table_name": {
+          "type": "string",
+          "enum": [],
+          "default": "",
+          "title": "Table Name",
+          "format": "select",
+          "options": {
+            "tags": true,
+            "creatable": true,
+            "async": {
+              "label": "Load tables",
+              "action": "list_tables",
+              "autoload": [
+                "parameters.#token"
+              ]
+            }
+          },
+          "propertyOrder": 12
+        },
+        "mode": {
+          "enum": [
+            "replace",
+            "append",
+            "upsert"
+          ],
+          "type": "string",
+          "title": "Load Type",
+          "default": "replace",
+          "options": {
+            "enum_titles": [
+              "Replace",
+              "Append",
+              "Upsert"
+            ]
+          },
+          "propertyOrder": 13
+        },
+        "primary_key": {
+          "type": "array",
+          "items": {
+            "enum": [],
+            "type": "string"
+          },
+          "title": "Primary key",
+          "format": "select",
+          "options": {
+            "tags": true,
+            "async": {
+              "label": "Re-load columns",
+              "action": "list_table_columns"
+            },
+            "dependencies": {
+              "parquet_output": false
+            }
+          },
+          "uniqueItems": true,
+          "propertyOrder": 14
+        },
+        "preserve_insertion_order": {
+          "type": "boolean",
+          "title": "Preserve insertion order",
+          "format": "checkbox",
+          "default": true,
+          "description": "If enabled, the extractor will preserve the order of the rows in the destination table. Disabling this option may help when encountering OOM error.",
+          "propertyOrder": 15
+        }
+      },
+      "propertyOrder": 1
+    },
+    "debug": {
+      "type": "boolean",
+      "title": "Debug mode",
+      "format": "checkbox",
+      "default": false,
+      "description": "If enabled, the component will produce detailed logs",
+      "propertyOrder": 2
+    }
+  }
+}
