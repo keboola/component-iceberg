@@ -1,18 +1,42 @@
 {
   "type": "object",
-  "title": "extractor configuration",
+  "title": "Component configuration",
   "required": [
-    "print_hello"
+    "catalog"
   ],
   "properties": {
-    "print_hello": {
-      "type": "boolean",
-      "title": "Print Hello",
-      "propertyOrder": 1
-    },
-    "debug": {
-      "type": "boolean",
-      "title": "Debug",
+    "catalog": {
+      "type": "object",
+      "title": "Catalog",
+      "required": [
+        "name",
+        "warehouse",
+        "uri",
+        "#token"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Catalog Name",
+          "propertyOrder": 11
+        },
+        "warehouse": {
+          "type": "string",
+          "title": "Warehouse",
+          "propertyOrder": 12
+        },
+        "uri": {
+          "type": "string",
+          "title": "URI",
+          "propertyOrder": 13
+        },
+        "#token": {
+          "type": "string",
+          "title": "Token",
+          "format": "password",
+          "propertyOrder": 14
+        }
+      },
       "propertyOrder": 2
     }
   }
