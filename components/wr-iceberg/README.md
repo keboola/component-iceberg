@@ -1,84 +1,20 @@
-Component Iceberg
+Iceberg Writer
 =============
 
-Description
-
-**Table of Contents:**
-
-[TOC]
-
-Functionality Notes
-===================
-
-Prerequisites
-=============
-
-Ensure you have the necessary API token, register the application, etc.
-
-Features
-========
-
-| **Feature**             | **Description**                               |
-|-------------------------|-----------------------------------------------|
-| Generic UI Form         | Dynamic UI form for easy configuration.       |
-| Row-Based Configuration | Allows structuring the configuration in rows. |
-| OAuth                   | OAuth authentication enabled.                 |
-| Incremental Loading     | Fetch data in new increments.                 |
-| Backfill Mode           | Supports seamless backfill setup.             |
-| Date Range Filter       | Specify the date range for data retrieval.    |
-
-Supported Endpoints
-===================
-
-If you need additional endpoints, please submit your request to
-[ideas.keboola.com](https://ideas.keboola.com/).
+Component for writing data to Iceberg tables. Supports replace, append, and upsert load modes. Currently, only REST catalogs are supported.
 
 Configuration
 =============
 
-Param 1
--------
-Details about parameter 1.
+Configuration root level parameters:
+- **Catalog Name:** The Iceberg catalog to be used.- **Catalog Name:** Name of the Iceberg catalog to use.
+- **Warehouse:** Warehouse ID.
+- **URI:** REST endpoint for the Iceberg catalog.
+- **Token:** API token for authentication.
 
-Param 2
--------
-Details about parameter 2.
-
-Output
-======
-
-Provides a list of tables, foreign keys, and schema.
-
-Development
------------
-
-To customize the local data folder path, replace the `CUSTOM_FOLDER` placeholder with your desired path in the `docker-compose.yml` file:
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    volumes:
-      - ./:/code
-      - ./CUSTOM_FOLDER:/data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Clone this repository, initialize the workspace, and run the component using the following
-commands:
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-git clone https://github.com/keboola/component-iceberg.git component_iceberg
-cd component_iceberg
-docker-compose build
-docker-compose run --rm dev
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Run the test suite and perform lint checks using this command:
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-docker-compose run --rm test
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Integration
-===========
-
-For details about deployment and integration with Keboola, refer to the
-[deployment section of the developer
-documentation](https://developers.keboola.com/extend/component/deployment/).
+Configuration row level parameters:
+- **Namespace:** Namespace of the Iceberg table.
+- **Table Name:** Name of the Iceberg table to write to.
+- **Load Type:** Supported load types are Replace, Append, and Upsert.
+- **Primary Key:** List of primary key columns for upsert loads. If not specified, the primary keys of the input table are used.
+- **Preserve Insertion Order:** Disabling this option may help prevent out-of-memory issues.

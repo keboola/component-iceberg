@@ -1,1 +1,1 @@
-Component Iceberg short description
+Apache Iceberg is an open table format.
