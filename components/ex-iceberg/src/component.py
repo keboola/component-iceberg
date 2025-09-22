@@ -30,7 +30,7 @@ class Component(ComponentBase):
         table = self.catalog.load_table((self.params.source.namespace, self.params.source.table_name))
 
         selected_fields = (
-            self.params.data_selection.columns if self.params.data_selection.mode == "select_columns" else "*"
+            self.params.data_selection.columns if self.params.data_selection.mode == "selected_columns" else "*"
         )
 
         batches = table.scan(

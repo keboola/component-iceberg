@@ -17,8 +17,7 @@ class CommonConfiguration(BaseModel):
 
 class DataSelectionMode(str, Enum):
     all_data = "all_data"
-    select_columns = "select_columns"
-    custom_query = "custom_query"
+    selected_columns = "selected_columns"
 
 
 class LoadType(str, Enum):
@@ -35,7 +34,6 @@ class Source(BaseModel):
 class DataSelection(BaseModel):
     mode: DataSelectionMode = Field(default=DataSelectionMode.all_data)
     columns: list[str] = Field(default_factory=list)
-    query: str = ""
 
 
 class Destination(BaseModel):

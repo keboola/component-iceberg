@@ -57,15 +57,15 @@
         "mode": {
           "enum": [
             "all_data",
-            "select_columns"
+            "selected_columns"
           ],
           "type": "string",
-          "title": "Load Type",
+          "title": "Data selection mode",
           "default": "all_data",
           "options": {
             "enum_titles": [
               "All Data",
-              "Select Columns"
+              "Selected Columns"
             ]
           },
           "propertyOrder": 31
