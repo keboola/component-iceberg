@@ -1,1 +1,1 @@
-Apache Iceberg is an open table format.
+Writes data to Apache Iceberg tables.
