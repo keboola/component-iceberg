@@ -1,1 +1,1 @@
-Apache Iceberg is an open table format.
+Extracts data from Apache Iceberg tables.
