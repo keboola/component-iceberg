@@ -2,15 +2,13 @@ name: ex-iceberg
 
 on:
   push:
-    branches:
-     - 'feature/*'
-     - 'fix/*'
-     - '*' 
+    branches-ignore:
+      - main
     tags:
-      - '*' # Skip the workflow on the main branch without tag
+      - '*'
     paths:
       - 'components/ex-iceberg/**'
-      - '../../components/common'
+      - 'components/common/**'
       - '.github/workflows/**'
 
 concurrency: ci-${{ github.workflow }}-${{ github.ref }}
